@@ -1,0 +1,7 @@
+flask
+pandas
+scikit-learn
+matplotlib
+seaborn
+zenml==0.83.0
+mlflow

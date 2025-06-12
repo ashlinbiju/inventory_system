@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>Demand Prediction</title></head>
+<body>
+  <h2>Current Week Sales: ₹{{ current_sales }}</h2>
+  <h3>Next Two Week Predictions:</h3>
+  <ul>
+    {% for row in predictions %}
+      <li>Year {{ row.Year }}, Week {{ row.Week }}: ₹{{ row.Predicted_Sales | round(2) }}</li>
+    {% endfor %}
+  </ul>
+  <a href="/">Back to Home</a>
+</body>
+</html>
