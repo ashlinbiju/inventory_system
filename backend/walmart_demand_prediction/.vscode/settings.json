@@ -1,0 +1,5 @@
+{
+  "python.analysis.extraPaths": ["./zenml_pipeline",
+    "./zenml_pipeline/steps",
+    "./app"]
+}

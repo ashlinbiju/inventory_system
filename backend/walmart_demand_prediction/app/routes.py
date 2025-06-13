@@ -1,25 +1,47 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request
 import pandas as pd
+import joblib
+from datetime import datetime
+import sys
+import os
 
-main = Blueprint("main", __name__)
+# Ensure parent directory is in the path so 'steps' can be found
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-@main.route("/")
+from zenml_pipeline.steps.predict import predict  # Import the ZenML predict step
+
+routes = Blueprint('routes', __name__)
+
+@routes.route('/')
 def home():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@main.route("/demand-prediction")
+@routes.route('/demand-prediction', methods=['GET', 'POST'])
+
 def demand_prediction():
-    df = pd.read_csv("data/walmart_sales.csv", parse_dates=['Date'])
-    current_week = df['Date'].dt.isocalendar().week.max()
-    current_year = df['Date'].dt.year.max()
+    # Load data and model
+    df = pd.read_csv('data/walmart_sales.csv', parse_dates=['Date'], dayfirst=True)
+    model = joblib.load('models/sales_model.pkl')
 
-    # Dummy loading for now - in real case, this should read ZenML prediction outputs
-    predictions = pd.DataFrame({
-        'Year': [current_year]*2,
-        'Week': [current_week + 1, current_week + 2],
-        'Predicted_Sales': [15000, 16000]
-    })
+    # Default number of weeks to predict
+    n = 2
+    if request.method == 'POST':
+        try:
+            n = int(request.form['weeks'])
+        except ValueError:
+            n = 2
 
-    current_sales = df[df['Date'].dt.isocalendar().week == current_week]['Weekly_Sales'].sum()
+    # Get current week's sales
+    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)
+    current_date = df['Date'].max()
+    current_week = current_date.isocalendar().week
+    current_year = current_date.year
+    current_sales = df[(df['Date'].dt.isocalendar().week == current_week) &
+                       (df['Date'].dt.year == current_year)]['Weekly_Sales'].sum()
 
-    return render_template("demand_prediction.html", current_sales=current_sales, predictions=predictions.to_dict(orient="records"))
+    # Get predictions using ZenML step
+    predictions_df = predict(model=model, df=df, n=n)
+
+    return render_template('demand_prediction.html',
+                           current_sales=round(current_sales, 2),
+                           predictions=predictions_df.to_dict(orient='records'))
